@@ -4,27 +4,70 @@ class CalcController {
         this._operation = [];
         this._lastOperator = "";
         this._lastNumber = "";
+        this._audioOnOff = "off";
+        this._audio = new Audio("click.mp3");
         this._displayCalcEl = document.querySelector("#display");
         this._dateEl = document.querySelector("#data");
         this._timeEl = document.querySelector("#hora");
 
         this._currentDate;
-        this.inicializer();
+        this.inicialize();
         this.initButtonsEvents();
         this.initKeyboard();
     }
 
+    // metodo para copiar e colar os numeros no display
+    copyToClipBoard(){
+        //apenas está sendo criado um input porq a calculadora é feita em SVG
+        let input = document.createElement("input");
+        input.value = this.displayCalc;
+        document.body.appendChild(input);
+
+        input.select();
+        document.execCommand("Copy");
+        input.remove();
+    }
+
+    // metodo para colar o conteúdo da memória da área de transferência
+    pasteFromClipboard(){
+        document.addEventListener("paste", e => {
+            let text = e.clipboardData.getData("Text");
+            this.displayCalc = parseFloat(text);
+        })
+    }
+
     // metodo chamado no contrutor para sempre ser chamado ao iniciar
-    inicializer(){
+    inicialize(){
         this.setDisplayTime(); 
         setInterval( () => {
             this.setDisplayTime(); 
         }, 1000);
         this.setLastNumberToDisplay();
+        this.pasteFromClipboard();
+
+        document.querySelectorAll(".btn-ac").forEach( btn => {
+            btn.addEventListener("dblclick", e => {
+                this.toggleAudio();
+            })
+        })
+    }
+
+    //ligar ou desligar o audio da calculadora
+    toggleAudio(){
+        this._audioOnOff = !this.__audioOnOff;
+    }
+
+    //tocar audio ao clicar em um botão na calculadora ou no teclado
+    playAudio(){
+        if(this._audioOnOff) {
+            this._audio.currentTime = 0;
+            this._audio.play();
+        }
     }
 
     initKeyboard(){
         document.addEventListener("keyup", e => {
+            this.playAudio();
             console.log(e.key);
 
             switch (e.key) {
@@ -65,6 +108,12 @@ class CalcController {
                 case "8":
                 case "9":
                     this.addOperation(parseInt(e.key));
+                    break;
+                
+                case "c":
+                    if(e.ctrlKey){
+                        this.copyToClipBoard();
+                    }
                     break;
     
                 default:
@@ -122,7 +171,13 @@ class CalcController {
     }
 
     getResult(){
-        return eval(this._operation.join(""));
+        try {
+            return eval(this._operation.join(""));
+        } catch {
+            setTimeout( () => {
+                this.setError();
+            },1)
+        }
     }
 
 
@@ -233,6 +288,8 @@ class CalcController {
     
     // case com todas as operações possiveis
     execBtn(value){
+        this.playAudio();
+
         switch (value) {
             case "ac":
                 this.clearAll();
@@ -332,6 +389,10 @@ class CalcController {
         return this._displayCalcEl.innerHTML;
     }
     set displayCalc(value){
+        if(value.toString().length > 10) {
+            this.setError();
+            return;
+        }
         this._displayCalcEl.innerHTML = value;
     }
 
